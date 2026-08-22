@@ -1,14 +1,14 @@
-format = """$custom.sys_override
+format = """$custom.telemetry
 $character"""
 
 add_newline = false
 
-[custom.sys_override]
-command = "echo -ne '\\033[1;36m+-----------------------------------------------------+\\n| [SYSTEM OVERRIDE] :: SECURE TERMINAL LINK 0x8F      |\\n| STATUS: ROOT ACCESS GRANTED | ENCRYPTION: ACTIVE    |\\n+-----------------------------------------------------+\\n\\033[1;34m//SYS.LOC:\\033[0m \\033[1;36m~\\033[0m \\033[1;34m//NODE:\\033[0m \\033[1;36mHYPEROID\\033[0m \\033[1;34m//TIME:\\033[0m \\033[1;36m'$(date +%T)'\\033[0m'"
+[custom.telemetry]
+command = "echo -ne '\\033[1;34m//SYS.LOC:\\033[0m \\033[1;36m~\\033[0m \\033[1;34m//NODE:\\033[0m \\033[1;36mHYPEROID\\033[0m \\033[1;34m//TIME:\\033[0m \\033[1;36m'$(date +%T)'\\033[0m'"
 when = "true"
 shell = ["bash", "--noprofile", "--norc"]
-format = "$output\n"
+format = "$output"
 
 [character]
-success_symbol = "[>> ACCESS//_](bold green) "
-error_symbol = "[>> ACCESS_DENIED//!](bold red) "
+success_symbol = "\n[>> ACCESS//_](bold green) "
+error_symbol = "\n[>> ACCESS_DENIED//!](bold red) "
