@@ -14,7 +14,7 @@ pkg update -y
 pkg install tmux python git sox termux-api starship libnghttp2 ca-certificates -y
 
 echo -e "\n\033[1;33m[+] Installing Python requirements...\033[0m"
-pip install --upgrade pip
+
 pip install requests SpeechRecognition
 
 echo -e "\n\033[1;33m[+] Provisioning workspace files...\033[0m"
