@@ -11,7 +11,7 @@ An autonomous tactical cyber-ops AI terminal HUD for Android/Termux powered by G
 pkg install termux-api -y
 
 # 2. Clone repository & run installer
-git clone [https://github.com/suyogpawate-lab/Hyperoid-cli-agent.git](https://github.com/suyogpawate-lab/Hyperoid-cli-agent.git)
+git clone https://github.com/suyogpawate-lab/Hyperoid-cli-agent.git
 cd Hyperoid-cli-agent
 bash install.sh
 
