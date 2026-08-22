@@ -25,6 +25,12 @@ if not gemini_key or len(gemini_key) < 15:
     print("\033[1;31m[!] No API Key found in ~/.hyperoid_agent/config.json\033[0m")
     sys.exit(1)
 
+os.system("clear")
+print("\033[1;36m+---------------------------------------------------+\033[0m")
+print("\033[1;36m|     AUTONOMOUS CYBER INTELLIGENCE // HYPEROID     |\033[0m")
+print("\033[1;36m+---------------------------------------------------+\033[0m")
+print("\033[1;30m[READY] Neural Link Active .. Model: Gemini-3.6-Flash\033[0m\n")
+
 SYSTEM_PROMPT = """You are HYPEROID, an elite autonomous tactical cyber-ops AI terminal agent operating on Termux/Android.
 Respond in a crisp, technical Hollywood cyberdeck terminal telemetry tone.
 
@@ -98,6 +104,10 @@ while True:
         if cmd.lower() == "clear":
             conversation_history.clear()
             os.system("clear")
+            print("\033[1;36m+---------------------------------------------------+\033[0m")
+            print("\033[1;36m|     AUTONOMOUS CYBER INTELLIGENCE // HYPEROID     |\033[0m")
+            print("\033[1;36m+---------------------------------------------------+\033[0m")
+            print("\033[1;30m[READY] Neural Link Active .. Model: Gemini-3.6-Flash\033[0m\n")
             continue
 
         resp = query_gemini(cmd)
@@ -105,4 +115,3 @@ while True:
         parse_and_execute_triggers(resp)
     except (KeyboardInterrupt, EOFError):
         break
-            
