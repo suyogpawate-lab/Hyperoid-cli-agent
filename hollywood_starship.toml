@@ -11,10 +11,6 @@ command = "echo -e '\\033[1;36m+------------------------------------------------
 when = "true"
 shell = ["bash", "--noprofile", "--norc"]
 
-[custom.telemetry]
-command = "echo -e '\\033[1;34m//SYS.LOC:\\033[0m \\033[1;36m~\\033[0m \\033[1;34m//NODE:\\033[0m \\033[1;36mHYPEROID\\033[0m \\033[1;34m//TIME:\\033[0m \\033[1;36m'$(date +%T)'\\033[0m'"
-when = "true"
-shell = ["bash", "--noprofile", "--norc"]
 
 [character]
 success_symbol = "[>> ACCESS//_](bold green) "
