@@ -8,7 +8,6 @@ import requests
 
 CONFIG_PATH = os.path.expanduser("~/.hyperoid_agent/config.json")
 
-# Load existing configuration
 config = {}
 if os.path.exists(CONFIG_PATH):
     try:
@@ -18,13 +17,13 @@ if os.path.exists(CONFIG_PATH):
         config = {}
 
 gemini_key = os.getenv("GEMINI_API_KEY") or config.get("GEMINI_API_KEY", "")
+gemini_key = "".join(c for c in gemini_key if c.isalnum() or c in "-_")
 
-# Fallback check if launched without running install.sh
-if not gemini_key or len(gemini_key.strip()) < 15:
-    print("\033[1;31m[!] Missing API Key. Run 'bash install.sh' or set GEMINI_API_KEY.\033[0m")
+if not gemini_key.startswith("AIzaSy"):
+    print("\033[1;31m[!] Invalid Key Format. Gemini API keys must begin with 'AIzaSy...'\033[0m")
+    print("\033[1;33mPlease generate a valid key at: https://aistudio.google.com/app/apikey\033[0m")
     sys.exit(1)
 
-# Render main HUD telemetry header
 os.system("clear")
 print("\033[1;36m+---------------------------------------------------+\033[0m")
 print("\033[1;36m|     AUTONOMOUS CYBER INTELLIGENCE // HYPEROID     |\033[0m")
@@ -46,7 +45,6 @@ Always keep responses technical, concise, and structured.
 conversation_history = []
 
 def parse_and_execute_triggers(text):
-    # Git Clone Trigger
     git_match = re.search(r'\[SYS_DEPLOY:\s*GIT_CLONE\]\s*Target:\s*(\S+)', text)
     if git_match:
         url = git_match.group(1).replace('<', '').replace('>', '')
@@ -54,19 +52,16 @@ def parse_and_execute_triggers(text):
             print(f"\033[1;33m>> Fetching {url}...\033[0m")
             subprocess.Popen(f"git clone {url} ~/$(basename {url} .git)", shell=True)
 
-    # Flashlight Triggers
     if "[SYS_ACTION: FLASHLIGHT_ON]" in text:
         subprocess.Popen("termux-torch on 2>/dev/null || true", shell=True)
     elif "[SYS_ACTION: FLASHLIGHT_OFF]" in text:
         subprocess.Popen("termux-torch off 2>/dev/null || true", shell=True)
 
-    # App Launcher Trigger
     app_match = re.search(r'\[SYS_ACTION:\s*OPEN_APP\]\s*App:\s*(\S+)', text)
     if app_match:
         app = app_match.group(1).replace('<', '').replace('>', '')
         subprocess.Popen(f"termux-open-url https://{app}.com 2>/dev/null || am start -a android.intent.action.MAIN 2>/dev/null || true", shell=True)
 
-    # Shell Exec Trigger
     exec_match = re.search(r'\[SYS_EXEC:\s*SHELL\]\s*Command:\s*(.+)', text)
     if exec_match:
         cmd = exec_match.group(1).replace('<', '').replace('>', '').strip()
@@ -76,7 +71,9 @@ def parse_and_execute_triggers(text):
 def query_gemini(user_input):
     global conversation_history
     conversation_history.append({"role": "user", "content": user_input})
+    
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={gemini_key}"
+    headers = {"Content-Type": "application/json"}
     
     contents = [{"role": "user", "parts": [{"text": SYSTEM_PROMPT}]}]
     for msg in conversation_history:
@@ -84,15 +81,15 @@ def query_gemini(user_input):
         contents.append({"role": role, "parts": [{"text": msg["content"]}]})
         
     try:
-        res = requests.post(url, json={"contents": contents}, timeout=15)
+        res = requests.post(url, headers=headers, json={"contents": contents}, timeout=15)
         if res.status_code == 200:
             reply = res.json()["candidates"][0]["content"]["parts"][0]["text"]
             conversation_history.append({"role": "assistant", "content": reply})
             return f"\033[1;36m[HYPEROID // TELEMETRY] >>\033[0m\n{reply}"
         else:
-            return f"\033[1;31m[Offline // TELEMETRY] >> API Error {res.status_code}: {res.text}\033[0m"
+            return f"\033[1;31m[API Error {res.status_code}]: {res.text}\033[0m"
     except Exception as e:
-        return f"\033[1;31m[Offline // TELEMETRY] >> Network Failure: {e}\033[0m"
+        return f"\033[1;31m[Network Failure]: {e}\033[0m"
 
 while True:
     try:
@@ -115,4 +112,3 @@ while True:
         parse_and_execute_triggers(resp)
     except (KeyboardInterrupt, EOFError):
         break
-                                                           
