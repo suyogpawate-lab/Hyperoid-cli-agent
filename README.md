@@ -1,6 +1,6 @@
 # Hyperoid-cli-agent
 
-An autonomous tactical cyber-ops AI terminal HUD for Android/Termux powered by Gemini 2.5 Flash.
+An autonomous tactical cyber-ops AI terminal HUD for Android/Termux powered by Gemini 3.6 Flash.
 
 ---
 
