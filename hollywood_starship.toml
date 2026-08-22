@@ -1,7 +1,5 @@
-format = """
-$custom.sys_override
-$character
-"""
+format = """$custom.sys_override
+$character"""
 
 add_newline = false
 
