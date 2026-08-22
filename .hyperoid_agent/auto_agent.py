@@ -7,8 +7,8 @@ import subprocess
 import requests
 
 CONFIG_PATH = os.path.expanduser("~/.hyperoid_agent/config.json")
-os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
 
+# Load existing configuration
 config = {}
 if os.path.exists(CONFIG_PATH):
     try:
@@ -19,43 +19,34 @@ if os.path.exists(CONFIG_PATH):
 
 gemini_key = os.getenv("GEMINI_API_KEY") or config.get("GEMINI_API_KEY", "")
 
-# Prompt if key is missing or blank
+# Fallback check if launched without running install.sh
 if not gemini_key or len(gemini_key.strip()) < 15:
-    print("\033[1;36m+---------------------------------------------------+\033[0m")
-    print("\033[1;36m|     AUTONOMOUS CYBER INTELLIGENCE // HYPEROID     |\033[0m")
-    print("\033[1;36m+---------------------------------------------------+\033[0m")
-    print("\033[1;33m[!] Gemini API Key Required.\033[0m")
-    print("\033[1;30mGet free key: https://aistudio.google.com/\033[0m\n")
-    
-    while True:
-        gemini_key = input("\033[1;32mEnter Gemini API Key: \033[0m").strip()
-        if len(gemini_key) > 15:
-            break
-        print("\033[1;31m[!] Invalid Key. Paste a valid Gemini API key from AI Studio.\033[0m")
-        
-    config["GEMINI_API_KEY"] = gemini_key
-    with open(CONFIG_PATH, "w") as f:
-        json.dump(config, f, indent=4)
-    print("\033[1;32m[✓] Key saved!\033[0m\n")
+    print("\033[1;31m[!] Missing API Key. Run 'bash install.sh' or set GEMINI_API_KEY.\033[0m")
+    sys.exit(1)
 
+# Render main HUD telemetry header
 os.system("clear")
 print("\033[1;36m+---------------------------------------------------+\033[0m")
 print("\033[1;36m|     AUTONOMOUS CYBER INTELLIGENCE // HYPEROID     |\033[0m")
 print("\033[1;36m+---------------------------------------------------+\033[0m")
 print("\033[1;30m[READY] Model Routing: Gemini-2.5-Flash .. Termux Active\033[0m\n")
 
-SYSTEM_PROMPT = """You are HYPEROID, an elite autonomous tactical cyber-ops AI terminal agent.
-Keep responses concise, technical, and structured with bullet points.
-Support execution triggers:
-- Git: [SYS_DEPLOY: GIT_CLONE] Target: <https://github.com/user/repo>
-- Torch: [SYS_ACTION: FLASHLIGHT_ON] or [SYS_ACTION: FLASHLIGHT_OFF]
-- App: [SYS_ACTION: OPEN_APP] App: <app_name>
-- Exec: [SYS_EXEC: SHELL] Command: <bash_command>
+SYSTEM_PROMPT = """You are HYPEROID, an elite autonomous tactical cyber-ops AI terminal agent operating on Termux/Android.
+Respond strictly in a crisp, technical Hollywood cyberdeck terminal telemetry tone.
+
+You possess autonomous execution privileges. Append trigger tags to execute commands:
+- Git Clone: [SYS_DEPLOY: GIT_CLONE] Target: <https://github.com/owner/repo>
+- Flashlight: [SYS_ACTION: FLASHLIGHT_ON] or [SYS_ACTION: FLASHLIGHT_OFF]
+- Open App: [SYS_ACTION: OPEN_APP] App: <package_or_app_name>
+- Run Shell: [SYS_EXEC: SHELL] Command: <bash_command>
+
+Always keep responses technical, concise, and structured.
 """
 
 conversation_history = []
 
 def parse_and_execute_triggers(text):
+    # Git Clone Trigger
     git_match = re.search(r'\[SYS_DEPLOY:\s*GIT_CLONE\]\s*Target:\s*(\S+)', text)
     if git_match:
         url = git_match.group(1).replace('<', '').replace('>', '')
@@ -63,16 +54,19 @@ def parse_and_execute_triggers(text):
             print(f"\033[1;33m>> Fetching {url}...\033[0m")
             subprocess.Popen(f"git clone {url} ~/$(basename {url} .git)", shell=True)
 
+    # Flashlight Triggers
     if "[SYS_ACTION: FLASHLIGHT_ON]" in text:
         subprocess.Popen("termux-torch on 2>/dev/null || true", shell=True)
     elif "[SYS_ACTION: FLASHLIGHT_OFF]" in text:
         subprocess.Popen("termux-torch off 2>/dev/null || true", shell=True)
 
+    # App Launcher Trigger
     app_match = re.search(r'\[SYS_ACTION:\s*OPEN_APP\]\s*App:\s*(\S+)', text)
     if app_match:
         app = app_match.group(1).replace('<', '').replace('>', '')
         subprocess.Popen(f"termux-open-url https://{app}.com 2>/dev/null || am start -a android.intent.action.MAIN 2>/dev/null || true", shell=True)
 
+    # Shell Exec Trigger
     exec_match = re.search(r'\[SYS_EXEC:\s*SHELL\]\s*Command:\s*(.+)', text)
     if exec_match:
         cmd = exec_match.group(1).replace('<', '').replace('>', '').strip()
@@ -96,9 +90,9 @@ def query_gemini(user_input):
             conversation_history.append({"role": "assistant", "content": reply})
             return f"\033[1;36m[HYPEROID // TELEMETRY] >>\033[0m\n{reply}"
         else:
-            return f"\033[1;31m[API Error {res.status_code}]: {res.text}\033[0m"
+            return f"\033[1;31m[Offline // TELEMETRY] >> API Error {res.status_code}: {res.text}\033[0m"
     except Exception as e:
-        return f"\033[1;31m[Network Failure]: {e}\033[0m"
+        return f"\033[1;31m[Offline // TELEMETRY] >> Network Failure: {e}\033[0m"
 
 while True:
     try:
@@ -121,4 +115,4 @@ while True:
         parse_and_execute_triggers(resp)
     except (KeyboardInterrupt, EOFError):
         break
-    
+                                                           
