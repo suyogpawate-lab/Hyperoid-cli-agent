@@ -19,35 +19,38 @@ if os.path.exists(CONFIG_PATH):
 
 gemini_key = os.getenv("GEMINI_API_KEY") or config.get("GEMINI_API_KEY", "")
 
-if not gemini_key or len(gemini_key.strip()) < 10:
-    os.system("clear")
-    print("\033[1;36m+-------------------------------------------------------------+\033[0m")
-    print("\033[1;36m|          AUTONOMOUS CYBER INTELLIGENCE // HYPEROID          |\033[0m")
-    print("\033[1;36m+-------------------------------------------------------------+\033[0m")
-    print("\033[1;33m[!] Gemini API Key required to initialize neural core.\033[0m")
+# Prompt if key is missing or blank
+if not gemini_key or len(gemini_key.strip()) < 15:
+    print("\033[1;36m+---------------------------------------------------+\033[0m")
+    print("\033[1;36m|     AUTONOMOUS CYBER INTELLIGENCE // HYPEROID     |\033[0m")
+    print("\033[1;36m+---------------------------------------------------+\033[0m")
+    print("\033[1;33m[!] Gemini API Key Required.\033[0m")
     print("\033[1;30mGet free key: https://aistudio.google.com/\033[0m\n")
     
     while True:
         gemini_key = input("\033[1;32mEnter Gemini API Key: \033[0m").strip()
-        if len(gemini_key) > 10:
+        if len(gemini_key) > 15:
             break
-        print("\033[1;31m[!] Invalid Key. Key cannot be empty.\033[0m")
+        print("\033[1;31m[!] Invalid Key. Paste a valid Gemini API key from AI Studio.\033[0m")
         
     config["GEMINI_API_KEY"] = gemini_key
     with open(CONFIG_PATH, "w") as f:
         json.dump(config, f, indent=4)
-    print("\033[1;32m[✓] API Key saved to ~/.hyperoid_agent/config.json\033[0m\n")
+    print("\033[1;32m[✓] Key saved!\033[0m\n")
 
-SYSTEM_PROMPT = """You are HYPEROID, an elite autonomous tactical cyber-ops AI terminal agent operating on Termux/Android.
-Respond strictly in a crisp, technical Hollywood cyberdeck terminal telemetry tone.
+os.system("clear")
+print("\033[1;36m+---------------------------------------------------+\033[0m")
+print("\033[1;36m|     AUTONOMOUS CYBER INTELLIGENCE // HYPEROID     |\033[0m")
+print("\033[1;36m+---------------------------------------------------+\033[0m")
+print("\033[1;30m[READY] Model Routing: Gemini-2.5-Flash .. Termux Active\033[0m\n")
 
-You have autonomous execution privileges. Append trigger tags to execute commands:
-- Git Clone: [SYS_DEPLOY: GIT_CLONE] Target: <https://github.com/owner/repo>
-- Flashlight: [SYS_ACTION: FLASHLIGHT_ON] or [SYS_ACTION: FLASHLIGHT_OFF]
-- Open App: [SYS_ACTION: OPEN_APP] App: <package_or_app_name>
-- Run Shell: [SYS_EXEC: SHELL] Command: <bash_command>
-
-Keep responses technical, concise, and structured.
+SYSTEM_PROMPT = """You are HYPEROID, an elite autonomous tactical cyber-ops AI terminal agent.
+Keep responses concise, technical, and structured with bullet points.
+Support execution triggers:
+- Git: [SYS_DEPLOY: GIT_CLONE] Target: <https://github.com/user/repo>
+- Torch: [SYS_ACTION: FLASHLIGHT_ON] or [SYS_ACTION: FLASHLIGHT_OFF]
+- App: [SYS_ACTION: OPEN_APP] App: <app_name>
+- Exec: [SYS_EXEC: SHELL] Command: <bash_command>
 """
 
 conversation_history = []
@@ -56,8 +59,8 @@ def parse_and_execute_triggers(text):
     git_match = re.search(r'\[SYS_DEPLOY:\s*GIT_CLONE\]\s*Target:\s*(\S+)', text)
     if git_match:
         url = git_match.group(1).replace('<', '').replace('>', '')
-        if "github.com/" in url and len(url.split("github.com/")) > 1 and url.split("github.com/")[1]:
-            print(f"\033[1;33m>> [SYS_DEPLOY: GIT_CLONE] Fetching {url}...\033[0m")
+        if "github.com/" in url:
+            print(f"\033[1;33m>> Fetching {url}...\033[0m")
             subprocess.Popen(f"git clone {url} ~/$(basename {url} .git)", shell=True)
 
     if "[SYS_ACTION: FLASHLIGHT_ON]" in text:
@@ -73,14 +76,14 @@ def parse_and_execute_triggers(text):
     exec_match = re.search(r'\[SYS_EXEC:\s*SHELL\]\s*Command:\s*(.+)', text)
     if exec_match:
         cmd = exec_match.group(1).replace('<', '').replace('>', '').strip()
-        print(f"\033[1;33m>> [SYS_EXEC: SHELL] Executing: {cmd}\033[0m")
+        print(f"\033[1;33m>> Executing: {cmd}\033[0m")
         subprocess.Popen(cmd, shell=True)
 
 def query_gemini(user_input):
     global conversation_history
     conversation_history.append({"role": "user", "content": user_input})
-    
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={gemini_key}"
+    
     contents = [{"role": "user", "parts": [{"text": SYSTEM_PROMPT}]}]
     for msg in conversation_history:
         role = "user" if msg["role"] == "user" else "model"
@@ -93,40 +96,29 @@ def query_gemini(user_input):
             conversation_history.append({"role": "assistant", "content": reply})
             return f"\033[1;36m[HYPEROID // TELEMETRY] >>\033[0m\n{reply}"
         else:
-            return f"\033[1;31m[Offline // TELEMETRY] >> [CORE_CRITICAL: API error {res.status_code}. Response: {res.text}]\033[0m"
+            return f"\033[1;31m[API Error {res.status_code}]: {res.text}\033[0m"
     except Exception as e:
-        return f"\033[1;31m[Offline // TELEMETRY] >> [CORE_CRITICAL: Cloud link failure: {e}]\033[0m"
+        return f"\033[1;31m[Network Failure]: {e}\033[0m"
 
-def main():
-    os.system("clear")
-    print("\033[1;36m+---------------------------------------------------+\033[0m")
-    print("\033[1;36m|     AUTONOMOUS CYBER INTELLIGENCE // HYPEROID     |\033[0m")
-    print("\033[1;36m+---------------------------------------------------+\033[0m")
-    print("\033[1;30m[READY] Model Routing: Gemini-2.5-Flash .. Termux Core Active\033[0m\n")
-
-    while True:
-        try:
-            cmd = input("\033[1;36m[AGENT_CMD] > \033[0m").strip()
-            if not cmd:
-                continue
-            if cmd.lower() in ["exit", "quit"]:
-                break
-            if cmd.lower() == "clear":
-                conversation_history.clear()
-                os.system("clear")
-                print("\033[1;36m+---------------------------------------------------+\033[0m")
-                print("\033[1;36m|     AUTONOMOUS CYBER INTELLIGENCE // HYPEROID     |\033[0m")
-                print("\033[1;36m+---------------------------------------------------+\033[0m")
-                print("\033[1;30m[READY] Model Routing: Gemini-2.5-Flash .. Termux Core Active\033[0m\n")
-                continue
-
-            response = query_gemini(cmd)
-            print(f"\n{response}\n")
-            parse_and_execute_triggers(response)
-
-        except (KeyboardInterrupt, EOFError):
-            print("\n\033[1;31m[TERMINATED] Session closed.\033[0m")
+while True:
+    try:
+        cmd = input("\033[1;36m[AGENT_CMD] > \033[0m").strip()
+        if not cmd:
+            continue
+        if cmd.lower() in ["exit", "quit"]:
             break
+        if cmd.lower() == "clear":
+            conversation_history.clear()
+            os.system("clear")
+            print("\033[1;36m+---------------------------------------------------+\033[0m")
+            print("\033[1;36m|     AUTONOMOUS CYBER INTELLIGENCE // HYPEROID     |\033[0m")
+            print("\033[1;36m+---------------------------------------------------+\033[0m")
+            print("\033[1;30m[READY] Model Routing: Gemini-2.5-Flash .. Termux Active\033[0m\n")
+            continue
 
-if __name__ == "__main__":
-    main()
+        resp = query_gemini(cmd)
+        print(f"\n{resp}\n")
+        parse_and_execute_triggers(resp)
+    except (KeyboardInterrupt, EOFError):
+        break
+    
