@@ -16,12 +16,11 @@ if os.path.exists(CONFIG_PATH):
     except Exception:
         config = {}
 
-gemini_key = os.getenv("GEMINI_API_KEY") or config.get("GEMINI_API_KEY", "")
-gemini_key = "".join(c for c in gemini_key if c.isalnum() or c in "-_")
+raw_key = os.getenv("GEMINI_API_KEY") or config.get("GEMINI_API_KEY", "")
+gemini_key = str(raw_key).strip().replace('"', '').replace("'", "")
 
-if not gemini_key.startswith("AIzaSy"):
-    print("\033[1;31m[!] Invalid Key Format. Gemini API keys must begin with 'AIzaSy...'\033[0m")
-    print("\033[1;33mPlease generate a valid key at: https://aistudio.google.com/app/apikey\033[0m")
+if not gemini_key or len(gemini_key) < 15:
+    print("\033[1;31m[!] Missing or invalid Gemini API Key in config.\033[0m")
     sys.exit(1)
 
 os.system("clear")
@@ -72,8 +71,12 @@ def query_gemini(user_input):
     global conversation_history
     conversation_history.append({"role": "user", "content": user_input})
     
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={gemini_key}"
-    headers = {"Content-Type": "application/json"}
+    # Send via header instead of URL parameter to avoid URL encoding issues
+    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+    headers = {
+        "Content-Type": "application/json",
+        "x-goog-api-key": gemini_key
+    }
     
     contents = [{"role": "user", "parts": [{"text": SYSTEM_PROMPT}]}]
     for msg in conversation_history:
@@ -112,3 +115,4 @@ while True:
         parse_and_execute_triggers(resp)
     except (KeyboardInterrupt, EOFError):
         break
+    
