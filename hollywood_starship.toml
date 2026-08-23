@@ -1,4 +1,4 @@
-format = """$custom.sys_telemetry
+format = """${custom.sys_telemetry}
 $character"""
 
 add_newline = false
