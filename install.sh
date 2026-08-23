@@ -1,70 +1,122 @@
-#!/data/data/com.termux/files/usr/bin/bash
+#!/bin/bash
+
+# ==============================================================================
+# HYPEROID // LEVEL-8 AUTONOMOUS CYBERDECK OS INSTALLER
+# Target Platform: Android / Termux
+# ==============================================================================
+
 set -e
 
+CYAN='\033[1;36m'
+GREEN='\033[1;32m'
+YELLOW='\033[1;33m'
+RED='\033[1;31m'
+NC='\033[0m'
+
 clear
-echo -e "\033[1;36m+-------------------------------------------------------------+\033[0m"
-echo -e "\033[1;36m|            DEPLOYING HYPEROID CYBERDECK HUD                 |\033[0m"
-echo -e "\033[1;36m+-------------------------------------------------------------+\033[0m"
+echo -e "${CYAN}+===========================================================+${NC}"
+echo -e "${CYAN}|         HYPEROID // AUTONOMOUS AGENT DEPLOYMENT           |${NC}"
+echo -e "${CYAN}|                LEVEL-8 CYBERDECK INSTALLER                |${NC}"
+echo -e "${CYAN}+===========================================================+${NC}"
+echo ""
 
-CONFIG_DIR="$HOME/.hyperoid_agent"
-CONFIG_FILE="$CONFIG_DIR/config.json"
-mkdir -p "$CONFIG_DIR"
+# 1. Update Termux Package Repositories
+echo -e "${YELLOW}[1/6] Updating Termux core packages...${NC}"
+pkg update -y && pkg upgrade -y
 
-# 1. Prompt for Gemini API Key (Primary Neural Core)
-echo -e "\n\033[1;33m[1/2] Google Gemini API Key (Primary Neural Core)\033[0m"
-echo -e "\033[1;30mGet key: https://aistudio.google.com/\033[0m"
+# 2. Install System Dependencies
+echo -e "${YELLOW}[2/6] Installing hardware tools, audio drivers, and recon binaries...${NC}"
+pkg install -y \
+    python \
+    python-pip \
+    git \
+    tmux \
+    termux-api \
+    mpv \
+    ffmpeg \
+    nmap \
+    net-tools \
+    iproute2 \
+    cronie \
+    jq \
+    bc \
+    sqlite \
+    libxml2 \
+    libxslt
 
-GEMINI_KEY=""
-while [ ${#GEMINI_KEY} -le 15 ]; do
-    read -p "Enter Gemini API Key: " GEMINI_KEY
-    if [ ${#GEMINI_KEY} -le 15 ]; then
-        echo -e "\033[1;31m[!] Key too short. Please enter a valid Gemini API key.\033[0m"
-    fi
-done
+# 3. Install Python Dependencies
+echo -e "${YELLOW}[3/6] Installing neural TTS, RAG, and Web C2 Python libraries...${NC}"
+pip install \
+    requests \
+    beautifulsoup4 \
+    edge-tts \
+    pypdf \
+    flask \
+    flask-cors \
+    cryptography \
+    python-telegram-bot \
+    --quiet
 
-# 2. Prompt for Groq API Key (Hardware Fallback)
-echo -e "\n\033[1;33m[2/2] Groq API Key (Fast Inference Fallback - Optional)\033[0m"
-echo -e "\033[1;30mGet key: https://console.groq.com/keys (Hit Enter to skip)\033[0m"
-read -p "Enter Groq API Key: " GROQ_KEY
+# 4. Initialize Directory Architecture
+echo -e "${YELLOW}[4/6] Initializing agent folder hierarchy...${NC}"
+mkdir -p "$HOME/.hyperoid_agent/cache"
+mkdir -p "$HOME/.hyperoid_agent/vault"
+mkdir -p "$HOME/.hyperoid_agent/sandbox"
+mkdir -p "$HOME/.hyperoid_agent/crontabs"
 
-# Persist credentials to config.json
-cat << EOF > "$CONFIG_FILE"
+# If cloned from git, sync files to ~/.hyperoid_agent
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -d "$REPO_DIR/.hyperoid_agent" ]; then
+    echo -e "${YELLOW}[+] Deploying agent scripts from repository...${NC}"
+    cp -r "$REPO_DIR/.hyperoid_agent/"* "$HOME/.hyperoid_agent/" 2>/dev/null || true
+fi
+
+# Set executable permissions
+chmod +x "$HOME/.hyperoid_agent"/*.py 2>/dev/null || true
+chmod +x "$HOME/.hyperoid_agent"/*.sh 2>/dev/null || true
+
+# 5. Create Default Configuration if Missing
+if [ ! -f "$HOME/.hyperoid_agent/config.json" ]; then
+    echo -e "${YELLOW}[5/6] Creating default configuration (~/.hyperoid_agent/config.json)...${NC}"
+    cat << 'EOF' > "$HOME/.hyperoid_agent/config.json"
 {
-    "GEMINI_API_KEY": "$GEMINI_KEY",
-    "GROQ_API_KEY": "$GROQ_KEY"
+  "GROQ_API_KEY": "",
+  "TELEGRAM_BOT_TOKEN": "",
+  "TELEGRAM_ADMIN_ID": ""
 }
 EOF
-echo -e "\n\033[1;32m[✓] Credentials sealed into $CONFIG_FILE\033[0m\n"
-
-# 3. Resolve Prefix & Install System Dependencies
-if [ -z "$PREFIX" ]; then
-    PREFIX="/data/data/com.termux/files/usr"
+    echo -e "${GREEN}[✓] Config template created.${NC}"
+else
+    echo -e "${GREEN}[5/6] Existing configuration found. Skipping overwrite.${NC}"
 fi
 
-echo -e "\033[1;33m[+] Installing system packages...\033[0m"
-pkg update -y
-pkg install tmux python git sox termux-api starship libnghttp2 ca-certificates -y
+# 6. Configure HUD Command Alias in .bashrc
+echo -e "${YELLOW}[6/6] Configuring global 'hud' launch command...${NC}"
 
-echo -e "\n\033[1;33m[+] Installing Python dependencies...\033[0m"
-pip install requests SpeechRecognition
+cat << 'EOF' > "$PREFIX/bin/hud"
+#!/bin/bash
+pkill -9 -f "python3.*auto_agent.py" 2>/dev/null || true
+tmux kill-server 2>/dev/null || true
 
-# 4. Provision workspace files
-echo -e "\n\033[1;33m[+] Deploying configuration files...\033[0m"
-mkdir -p "$HOME/.config"
+# Start background daemons
+python3 "$HOME/.hyperoid_agent/sentinel_daemon.py" >/dev/null 2>&1 &
+python3 "$HOME/.hyperoid_agent/web_deck.py" >/dev/null 2>&1 &
+crond 2>/dev/null || true
 
-cp -r .hyperoid_agent/* "$CONFIG_DIR/"
-if [ -f "hollywood_starship.toml" ]; then
-    cp hollywood_starship.toml "$HOME/.config/"
-fi
+# Create tmux split window layout
+tmux new-session -d -s hyperoid "bash '$HOME/.hyperoid_agent/hud_status.sh'"
+tmux split-window -h -t hyperoid:0.0 "python3 '$HOME/.hyperoid_agent/auto_agent.py'"
+tmux select-layout -t hyperoid:0 tiled
+tmux attach-session -t hyperoid
+EOF
 
-chmod +x "$CONFIG_DIR/"*.sh "$CONFIG_DIR/"*.py 2>/dev/null || true
-
-# 5. Link binary to PATH
-echo -e "\n\033[1;33m[+] Linking global 'hud' binary...\033[0m"
-ln -sf "$CONFIG_DIR/start_hud.sh" "$PREFIX/bin/hud"
 chmod +x "$PREFIX/bin/hud"
 
-echo -e "\n\033[1;32m[✓] HYPEROID Cyberdeck installed successfully!\033[0m\n"
-sleep 1
-
-exec "$PREFIX/bin/hud"
+echo ""
+echo -e "${GREEN}+===========================================================+${NC}"
+echo -e "${GREEN}|        [✓] HYPEROID OS INSTALLATION COMPLETE              |${NC}"
+echo -e "${GREEN}+===========================================================+${NC}"
+echo -e "${CYAN}Next Steps:${NC}"
+echo -e " 1. Ensure your GROQ API key is present in: ${YELLOW}~/.hyperoid_agent/config.json${NC}"
+echo -e " 2. Launch the full cyberdeck HUD anytime by typing: ${GREEN}hud${NC}"
+echo ""
