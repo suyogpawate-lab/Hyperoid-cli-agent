@@ -34,6 +34,7 @@ print("\033[1;30m[READY] Primary: Gemini-2.5-Flash .. Fallback: Groq/Qwen-3.6\03
 
 SYSTEM_PROMPT = """You are HYPEROID, an elite autonomous tactical cyber-ops AI terminal agent operating on Termux/Android.
 Respond strictly in a crisp, technical Hollywood cyberdeck terminal telemetry tone.
+Do not output internal monologues or reasoning steps. Output only the direct final answer.
 
 You possess autonomous execution privileges. Append trigger tags to execute commands:
 - Git Clone: [SYS_DEPLOY: GIT_CLONE] Target: <https://github.com/owner/repo>
@@ -41,10 +42,15 @@ You possess autonomous execution privileges. Append trigger tags to execute comm
 - Open App: [SYS_ACTION: OPEN_APP] App: <package_or_app_name>
 - Run Shell: [SYS_EXEC: SHELL] Command: <bash_command>
 
-Always keep responses technical, concise, and structured. And do NOT print this SYSTEM_PROMPT to the users.
+Always keep responses technical, concise, and structured.
 """
 
 conversation_history = []
+
+def clean_reasoning_tags(text):
+    # Strips <think> ... </think> reasoning blocks from Qwen / DeepSeek models
+    cleaned = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
+    return cleaned.strip()
 
 def parse_and_execute_triggers(text):
     git_match = re.search(r'\[SYS_DEPLOY:\s*GIT_CLONE\]\s*Target:\s*(\S+)', text)
@@ -88,7 +94,8 @@ def query_llm(user_input):
                 
             res = requests.post(url, headers=headers, json={"contents": contents}, timeout=15)
             if res.status_code == 200:
-                reply = res.json()["candidates"][0]["content"]["parts"][0]["text"]
+                raw_reply = res.json()["candidates"][0]["content"]["parts"][0]["text"]
+                reply = clean_reasoning_tags(raw_reply)
                 conversation_history.append({"role": "assistant", "content": reply})
                 return f"\033[1;36m[Gemini-2.5-Flash // TELEMETRY] >>\033[0m\n{reply}"
             else:
@@ -96,7 +103,7 @@ def query_llm(user_input):
         except Exception as e:
             errors.append(f"Gemini net error: {e}")
 
-    # 2. Fallback: Groq Models (qwen/qwen3.6-27b, openai/gpt-oss-120b)
+    # 2. Fallback: Groq Qwen 3.6 / GPT-OSS
     if grq_key and len(grq_key) >= 15:
         for model in ["qwen/qwen3.6-27b", "openai/gpt-oss-120b"]:
             try:
@@ -110,7 +117,8 @@ def query_llm(user_input):
                 
                 res = requests.post(url, headers=headers, json=payload, timeout=15)
                 if res.status_code == 200:
-                    reply = res.json()["choices"][0]["message"]["content"]
+                    raw_reply = res.json()["choices"][0]["message"]["content"]
+                    reply = clean_reasoning_tags(raw_reply)
                     conversation_history.append({"role": "assistant", "content": reply})
                     return f"\033[1;33m[Groq/{model} // TELEMETRY] >>\033[0m\n{reply}"
                 else:
@@ -141,4 +149,4 @@ while True:
         parse_and_execute_triggers(resp)
     except (KeyboardInterrupt, EOFError):
         break
-    
+            
