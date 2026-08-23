@@ -25,7 +25,7 @@ HYPEROID is an autonomous tactical cyberdeck operating system and AI agent termi
 ---
 
 ## 📁 Repository Architecture
-
+```
 Hyperoid-cli-agent/
 ├── install.sh                  # One-click deployment script
 ├── start_hud.sh                # Dual-pane tmux HUD initializer
@@ -43,7 +43,7 @@ Hyperoid-cli-agent/
     ├── web_deck.py             # Flask Web C2 control room
     ├── telegram_c2.py          # Remote Telegram C2 bot bridge
     └── hud_status.sh           # Left-pane cyberpunk interactive shell
-
+```
 ---
 
 ## 🚀 Quick Installation
