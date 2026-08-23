@@ -1,8 +1,0 @@
-config.json
-*.db
-*.log
-cache/
-crontabs/
-sandbox/
-vault/
-__pycache__/
