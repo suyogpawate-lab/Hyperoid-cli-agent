@@ -76,7 +76,7 @@ To start the HUD at any time:
 ```bash
 hud
 
-(or execute ./start_hud.sh)
+#(or execute ./start_hud.sh)
 
 ### Interactive Directives
 
