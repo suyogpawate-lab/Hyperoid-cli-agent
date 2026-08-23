@@ -4,37 +4,38 @@ import sys
 import json
 import re
 import subprocess
-import urllib.parse
 import requests
 
 CONFIG_PATH = os.path.expanduser("~/.hyperoid_agent/config.json")
 
-def get_api_key():
+def load_keys():
+    cfg = {}
     if os.path.exists(CONFIG_PATH):
         try:
             with open(CONFIG_PATH, "r") as f:
                 cfg = json.load(f)
-                return str(cfg.get("GEMINI_API_KEY", "")).strip()
         except Exception:
             pass
-    return os.getenv("GEMINI_API_KEY", "").strip()
+    gemini = os.getenv("GEMINI_API_KEY") or cfg.get("GEMINI_API_KEY", "")
+    groq = os.getenv("GROQ_API_KEY") or cfg.get("GROQ_API_KEY", "")
+    return str(gemini).strip().replace('"', '').replace("'", ""), str(groq).strip().replace('"', '').replace("'", "")
 
-gemini_key = get_api_key()
+gemini_key, groq_key = load_keys()
 
-if not gemini_key or len(gemini_key) < 15:
-    print("\033[1;31m[!] No API Key found in ~/.hyperoid_agent/config.json\033[0m")
+if not gemini_key and not groq_key:
+    print("\033[1;31m[!] No API Keys found in ~/.hyperoid_agent/config.json\033[0m")
     sys.exit(1)
 
 os.system("clear")
 print("\033[1;36m+---------------------------------------------------+\033[0m")
 print("\033[1;36m|     AUTONOMOUS CYBER INTELLIGENCE // HYPEROID     |\033[0m")
 print("\033[1;36m+---------------------------------------------------+\033[0m")
-print("\033[1;30m[READY] Neural Link Active .. Model: Gemini-3.6-Flash\033[0m\n")
+print("\033[1;30m[READY] Primary: Gemini-2.5-Flash .. Fallback: Groq/Qwen-3.6\033[0m\n")
 
 SYSTEM_PROMPT = """You are HYPEROID, an elite autonomous tactical cyber-ops AI terminal agent operating on Termux/Android.
-Respond in a crisp, technical Hollywood cyberdeck terminal telemetry tone.
+Respond strictly in a crisp, technical Hollywood cyberdeck terminal telemetry tone.
 
-You possess execution privileges. Append trigger tags to execute commands:
+You possess autonomous execution privileges. Append trigger tags to execute commands:
 - Git Clone: [SYS_DEPLOY: GIT_CLONE] Target: <https://github.com/owner/repo>
 - Flashlight: [SYS_ACTION: FLASHLIGHT_ON] or [SYS_ACTION: FLASHLIGHT_OFF]
 - Open App: [SYS_ACTION: OPEN_APP] App: <package_or_app_name>
@@ -69,30 +70,55 @@ def parse_and_execute_triggers(text):
         print(f"\033[1;33m>> [SYS_EXEC: SHELL] Executing: {cmd}\033[0m")
         subprocess.Popen(cmd, shell=True)
 
-def query_gemini(user_input):
+def query_llm(user_input):
     global conversation_history
-    current_key = get_api_key()
+    gem_key, grq_key = load_keys()
     conversation_history.append({"role": "user", "content": user_input})
-    
-    encoded_key = urllib.parse.quote(current_key)
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={encoded_key}"
-    headers = {"Content-Type": "application/json"}
-    
-    contents = [{"role": "user", "parts": [{"text": SYSTEM_PROMPT}]}]
-    for msg in conversation_history:
-        role = "user" if msg["role"] == "user" else "model"
-        contents.append({"role": role, "parts": [{"text": msg["content"]}]})
-        
-    try:
-        res = requests.post(url, headers=headers, json={"contents": contents}, timeout=15)
-        if res.status_code == 200:
-            reply = res.json()["candidates"][0]["content"]["parts"][0]["text"]
-            conversation_history.append({"role": "assistant", "content": reply})
-            return f"\033[1;36m[HYPEROID // TELEMETRY] >>\033[0m\n{reply}"
-        else:
-            return f"\033[1;31m[API Error {res.status_code}]: {res.text}\033[0m"
-    except Exception as e:
-        return f"\033[1;31m[Network Failure]: {e}\033[0m"
+    errors = []
+
+    # 1. Primary: Gemini 2.5 Flash
+    if gem_key and len(gem_key) >= 15:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={gem_key}"
+            headers = {"Content-Type": "application/json"}
+            contents = [{"role": "user", "parts": [{"text": SYSTEM_PROMPT}]}]
+            for msg in conversation_history:
+                role = "user" if msg["role"] == "user" else "model"
+                contents.append({"role": role, "parts": [{"text": msg["content"]}]})
+                
+            res = requests.post(url, headers=headers, json={"contents": contents}, timeout=15)
+            if res.status_code == 200:
+                reply = res.json()["candidates"][0]["content"]["parts"][0]["text"]
+                conversation_history.append({"role": "assistant", "content": reply})
+                return f"\033[1;36m[Gemini-2.5-Flash // TELEMETRY] >>\033[0m\n{reply}"
+            else:
+                errors.append(f"Gemini (HTTP {res.status_code})")
+        except Exception as e:
+            errors.append(f"Gemini net error: {e}")
+
+    # 2. Fallback: Groq Models (qwen/qwen3.6-27b, openai/gpt-oss-120b)
+    if grq_key and len(grq_key) >= 15:
+        for model in ["qwen/qwen3.6-27b", "openai/gpt-oss-120b"]:
+            try:
+                url = "https://api.groq.com/openai/v1/chat/completions"
+                headers = {
+                    "Authorization": f"Bearer {grq_key}",
+                    "Content-Type": "application/json"
+                }
+                messages = [{"role": "system", "content": SYSTEM_PROMPT}] + conversation_history
+                payload = {"model": model, "messages": messages}
+                
+                res = requests.post(url, headers=headers, json=payload, timeout=15)
+                if res.status_code == 200:
+                    reply = res.json()["choices"][0]["message"]["content"]
+                    conversation_history.append({"role": "assistant", "content": reply})
+                    return f"\033[1;33m[Groq/{model} // TELEMETRY] >>\033[0m\n{reply}"
+                else:
+                    errors.append(f"Groq {model} (HTTP {res.status_code})")
+            except Exception as e:
+                errors.append(f"Groq {model} error: {e}")
+
+    return f"\033[1;31m[Offline // TELEMETRY] >> {', '.join(errors)}\033[0m"
 
 while True:
     try:
@@ -107,11 +133,12 @@ while True:
             print("\033[1;36m+---------------------------------------------------+\033[0m")
             print("\033[1;36m|     AUTONOMOUS CYBER INTELLIGENCE // HYPEROID     |\033[0m")
             print("\033[1;36m+---------------------------------------------------+\033[0m")
-            print("\033[1;30m[READY] Neural Link Active .. Model: Gemini-3.6-Flash\033[0m\n")
+            print("\033[1;30m[READY] Primary: Gemini-2.5-Flash .. Fallback: Groq/Qwen-3.6\033[0m\n")
             continue
 
-        resp = query_gemini(cmd)
+        resp = query_llm(cmd)
         print(f"\n{resp}\n")
         parse_and_execute_triggers(resp)
     except (KeyboardInterrupt, EOFError):
         break
+    
