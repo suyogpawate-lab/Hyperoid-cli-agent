@@ -5,6 +5,7 @@ set -e
 CYAN='\033[1;36m'
 GREEN='\033[1;32m'
 YELLOW='\033[1;33m'
+RED='\033[1;31m'
 NC='\033[0m'
 
 clear
@@ -12,17 +13,17 @@ echo -e "${CYAN}+===========================================================+${N
 echo -e "${CYAN}|         HYPEROID // AUTONOMOUS AGENT DEPLOYMENT           |${NC}"
 echo -e "${CYAN}|                LEVEL-9 CYBERDECK INSTALLER                |${NC}"
 echo -e "${CYAN}+===========================================================+${NC}"
-echo "${CYAN}---THIS OPERATION MAY TAKE UPTO 20 MINUTES---${NC}"
+echo -e "${CYAN} ---THIS OPERATION MAY TAKE UPTO 20 MINUTES DEPENDING ON DEVICE AND INTERNET--- ${NC}"
 echo ""
 
 echo -e "${YELLOW}[1/6] Updating core repositories...${NC}"
-pkg update -y && pkg upgrade -y
+pkg update -y
 
-echo -e "${YELLOW}[2/6] Installing build toolchains, native libraries & binaries...${NC}"
-# Native compilation dependencies prevent metadata-generation-failed
+echo -e "${YELLOW}[2/6] Installing core binaries and pre-compiled libraries...${NC}"
 pkg install -y \
     python \
     python-pip \
+    python-cryptography \
     git \
     tmux \
     termux-api \
@@ -37,22 +38,10 @@ pkg install -y \
     sqlite \
     nodejs-lts \
     openssh \
-    curl \
-    clang \
-    make \
-    binutils \
-    libffi \
-    openssl \
-    rust \
-    tur-repo 2>/dev/null || true
+    curl
 
-echo -e "${YELLOW}[3/6] Bootstrapping Python build tools & dependencies...${NC}"
-# Upgrade wheel and setuptools before attempting package builds
-pip install --upgrade pip setuptools wheel --quiet
-
-# Optional: Install pre-compiled cryptography if available via pkg to avoid rust build bottlenecks
-pkg install -y python-cryptography 2>/dev/null || true
-
+echo -e "${YELLOW}[3/6] Installing lightweight Python dependencies...${NC}"
+pip install --upgrade pip setuptools wheel --no-cache-dir
 pip install \
     requests \
     beautifulsoup4 \
@@ -60,11 +49,8 @@ pip install \
     pypdf \
     flask \
     flask-cors \
-    cryptography \
     python-telegram-bot \
-    fastapi \
-    uvicorn \
-    --prefer-binary --quiet
+    --prefer-binary --no-cache-dir
 
 echo -e "${YELLOW}[4/6] Initializing agent directory structure...${NC}"
 mkdir -p "$HOME/.hyperoid_agent/cache"
@@ -84,18 +70,49 @@ fi
 chmod +x "$HOME/.hyperoid_agent"/*.py 2>/dev/null || true
 chmod +x "$HOME/.hyperoid_agent"/*.sh 2>/dev/null || true
 
-if [ ! -f "$HOME/.hyperoid_agent/config.json" ]; then
-    cat << 'EOF' > "$HOME/.hyperoid_agent/config.json"
+echo -e "${YELLOW}[5/6] Configuring Groq API Credentials...${NC}"
+CONFIG_FILE="$HOME/.hyperoid_agent/config.json"
+CURRENT_KEY=""
+
+if [ -f "$CONFIG_FILE" ]; then
+    CURRENT_KEY=$(grep -o '"GROQ_API_KEY": "[^"]*' "$CONFIG_FILE" | cut -d'"' -f4 || echo "")
+fi
+
+if [ -n "$CURRENT_KEY" ]; then
+    MASKED_KEY="${CURRENT_KEY:0:6}...${CURRENT_KEY: -4}"
+    echo -e "${GREEN}[*] Existing Groq API Key detected (${MASKED_KEY}).${NC}"
+    read -p "Do you want to update it? (y/N): " UPDATE_CHOICE
+    if [[ "$UPDATE_CHOICE" =~ ^[Yy]$ ]]; then
+        read -p "Enter your GROQ API Key (gsk_...): " USER_GROQ_KEY
+        USER_GROQ_KEY=$(echo "$USER_GROQ_KEY" | tr -d "'\"[:space:]")
+    else
+        USER_GROQ_KEY="$CURRENT_KEY"
+    fi
+else
+    echo ""
+    echo -e "${CYAN}-----------------------------------------------------------${NC}"
+    while [ -z "$USER_GROQ_KEY" ]; do
+        read -p "Enter your GROQ API Key (gsk_...): " USER_GROQ_KEY
+        USER_GROQ_KEY=$(echo "$USER_GROQ_KEY" | tr -d "'\"[:space:]")
+        if [ -z "$USER_GROQ_KEY" ]; then
+            echo -e "${RED}[!] Key cannot be empty. Please enter a valid key.${NC}"
+        fi
+    done
+    echo -e "${CYAN}-----------------------------------------------------------${NC}"
+fi
+
+cat << CFG > "$CONFIG_FILE"
 {
-  "GROQ_API_KEY": "",
+  "GROQ_API_KEY": "$USER_GROQ_KEY",
   "TELEGRAM_BOT_TOKEN": "",
   "TELEGRAM_ADMIN_ID": ""
 }
-EOF
-fi
+CFG
 
-echo -e "${YELLOW}[5/6] Registering global 'hud' command...${NC}"
-cat << 'EOF' > "$PREFIX/bin/hud"
+echo -e "${GREEN}[✓] Credentials saved to ~/.hyperoid_agent/config.json${NC}"
+
+echo -e "${YELLOW}[6/6] Registering global 'hud' command...${NC}"
+cat << 'HUD_EOF' > "$PREFIX/bin/hud"
 #!/bin/bash
 pkill -9 -f "python3.*auto_agent.py" 2>/dev/null || true
 pkill -9 -f "python3.*hyperoid_listener.py" 2>/dev/null || true
@@ -109,11 +126,11 @@ python3 "$HOME/.hyperoid_agent/hyperoid_listener.py" >/dev/null 2>&1 &
 crond 2>/dev/null || true
 
 tmux new-session -d -s hyperoid -n "CYBERDECK" "bash $HOME/.hyperoid_agent/hud_status.sh"
-tmux split-window -h -t hyperoid:0 "python3 $HOME/.hyperoid_agent/auto_agent.py"
+tmux split-window -h -t hyperoid:0 "bash -c 'python3 $HOME/.hyperoid_agent/auto_agent.py; echo \"\n[AGENT TERMINATED] Press Enter to re-run...\"; read; exec bash'"
 tmux select-layout -t hyperoid:0 even-horizontal
 tmux select-pane -t hyperoid:0.1
 tmux attach-session -t hyperoid
-EOF
+HUD_EOF
 
 chmod +x "$PREFIX/bin/hud"
 
@@ -121,3 +138,4 @@ echo ""
 echo -e "${GREEN}+===========================================================+${NC}"
 echo -e "${GREEN}|        [✓] HYPEROID OS INSTALLATION COMPLETE              |${NC}"
 echo -e "${GREEN}+===========================================================+${NC}"
+echo -e "${CYAN}Type 'hud' to start the cyberdeck.${NC}"
