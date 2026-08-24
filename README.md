@@ -50,10 +50,10 @@ Hyperoid-cli-agent/
 
 Run this single command inside Termux to clone and configure the entire system:
 ```bash
-pkg install -y git && \
+
 git clone https://github.com/suyogpawate-lab/Hyperoid-cli-agent.git
-cd ~/Hyperoid-cli-agent && \
-chmod +x install.sh start_hud.sh && \
+cd ~/Hyperoid-cli-agent && 
+chmod +x install.sh start_hud.sh && 
 ./install.sh
 ```
 ---
