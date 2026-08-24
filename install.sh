@@ -9,15 +9,16 @@ NC='\033[0m'
 
 clear
 echo -e "${CYAN}+===========================================================+${NC}"
-echo -e "${CYAN}\vert{}         HYPEROID // AUTONOMOUS AGENT DEPLOYMENT           \vert{}${NC}"
-echo -e "${CYAN}\vert{}                LEVEL-9 CYBERDECK INSTALLER                \vert{}${NC}"
+echo -e "${CYAN}|         HYPEROID // AUTONOMOUS AGENT DEPLOYMENT           |${NC}"
+echo -e "${CYAN}|                LEVEL-9 CYBERDECK INSTALLER                |${NC}"
 echo -e "${CYAN}+===========================================================+${NC}"
 echo ""
 
 echo -e "${YELLOW}[1/6] Updating core repositories...${NC}"
 pkg update -y && pkg upgrade -y
 
-echo -e "${YELLOW}[2/6] Installing hardware tools, audio drivers, and recon tools...${NC}"
+echo -e "${YELLOW}[2/6] Installing build toolchains, native libraries & binaries...${NC}"
+# Native compilation dependencies prevent metadata-generation-failed
 pkg install -y \
     python \
     python-pip \
@@ -35,10 +36,22 @@ pkg install -y \
     sqlite \
     nodejs-lts \
     openssh \
-    curl
+    curl \
+    clang \
+    make \
+    binutils \
+    libffi \
+    openssl \
+    rust \
+    tur-repo 2>/dev/null || true
 
-echo -e "${YELLOW}[3/6] Installing Python packages...${NC}"
-pip install --upgrade pip --quiet
+echo -e "${YELLOW}[3/6] Bootstrapping Python build tools & dependencies...${NC}"
+# Upgrade wheel and setuptools before attempting package builds
+pip install --upgrade pip setuptools wheel --quiet
+
+# Optional: Install pre-compiled cryptography if available via pkg to avoid rust build bottlenecks
+pkg install -y python-cryptography 2>/dev/null || true
+
 pip install \
     requests \
     beautifulsoup4 \
@@ -50,7 +63,7 @@ pip install \
     python-telegram-bot \
     fastapi \
     uvicorn \
-    --quiet
+    --prefer-binary --quiet
 
 echo -e "${YELLOW}[4/6] Initializing agent directory structure...${NC}"
 mkdir -p "$HOME/.hyperoid_agent/cache"
@@ -105,5 +118,5 @@ chmod +x "$PREFIX/bin/hud"
 
 echo ""
 echo -e "${GREEN}+===========================================================+${NC}"
-echo -e "${GREEN}\vert{}        [✓] HYPEROID OS INSTALLATION COMPLETE              \vert{}${NC}"
+echo -e "${GREEN}|        [✓] HYPEROID OS INSTALLATION COMPLETE              |${NC}"
 echo -e "${GREEN}+===========================================================+${NC}"
