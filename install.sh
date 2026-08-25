@@ -12,6 +12,7 @@ echo -e "${CYAN}+===========================================================+${N
 echo -e "${CYAN}|         HYPEROID // AUTONOMOUS AGENT DEPLOYMENT           |${NC}"
 echo -e "${CYAN}|                LEVEL-9 CYBERDECK INSTALLER                |${NC}"
 echo -e "${CYAN}+===========================================================+${NC}\n"
+echo -e "${CYAN}———THIS OPERATION MAY TAKE UPTO 20 MINUTES———${NC}\n"
 
 echo -e "${YELLOW}[1/6] Updating core repositories & packages...${NC}"
 pkg update -y
