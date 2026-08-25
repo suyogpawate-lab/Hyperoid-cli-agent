@@ -12,15 +12,15 @@ HYPEROID is an autonomous tactical cyberdeck operating system and AI agent termi
 ---
 
 ## ⚡ Key Features
+## Key Features
 
-* v9 ReAct & Swarm Core: Self-reflective Supervisor-Worker-Critic cycle that breaks down complex directives, executes tools in an isolated sandbox, reads outputs, inspects tracebacks, and self-corrects.
-* Hands-Free Hotword Detection: Background listener activates upon hearing "Hyperoid" to capture, process, and execute vocal commands automatically.
-* On-Demand Neural Spruce Voice: Prefix any prompt with -r (or -read-) to hear the complete, natural spoken synthesis powered by edge-tts (en-US-ChristopherNeural).
-* Dynamic Skill Hub & Compilation: Downloads or compiles full technical skill specifications (ui-ux-pro-max, clean-code-architecture, cyber-security-pentesting, etc.) directly into local markdown storage.
-* Web Server Hosting & Port Forwarding: Build and host full-stack apps (HTML, Node.js, Python Flask) locally and expose them globally via public SSH reverse tunnels (localhost.run).
-* Hardware-Level Android Control: Native hooks into battery telemetry, GPS coordinates, screen brightness, SMS dispatch, flashlight, clipboard, and notifications via termux-api.
-* Cyber Recon & Net Tools: Native integration with nmap, ping, active IP routing, and DuckDuckGo live web intelligence scraping.
-* Dual-Pane HUD (hud): Live cyberpunk access shell on the left pane and the autonomous neural agent terminal on the right pane running inside tmux.
+* **Multi-Model LLM Swarm Engine**: Autonomous cascading fallback across high-throughput models (`groq/compound`, `openai/gpt-oss-120b`, `qwen/qwen3.6-27b`, and `canopylabs/orpheus`) ensuring zero downtime and dynamic model resolution.
+* **Persistent Shared Memory**: SQLite-backed episodic memory and persistent knowledge vault (`memory.db`) shared across all swarm inference cycles for context retention.
+* **Autonomous WhatsApp Bridge**: Socket-level headless background messaging powered by Whiskeysockets Baileys daemon with dynamic contact lookup via `termux-contact-list`.
+* **Tactical Cyberdeck HUD**: Dual-pane split-terminal interface powered by `tmux`, featuring a real-time system telemetry monitor (`hud_status.sh`) alongside an interactive agent REPL.
+* **Autonomous ReAct Execution**: Self-correcting loop capable of running Bash shell utilities, isolated Python sandbox executions, and web-app hosting routines.
+* **Integrated Recon & OSINT**: Built-in triggers for live DuckDuckGo web searches, Nmap port scanning, and automated network/VPN routing audits.
+* **ChatGPT Spruce Voice Profile**: Hands-free voice synthesis output powered by Edge-TTS integration with configurable speech readouts (`-r` flag).
 
 ---
 
@@ -52,9 +52,9 @@ Run this single command inside Termux to clone and configure the entire system:
 ```bash
 
 git clone https://github.com/suyogpawate-lab/Hyperoid-cli-agent.git
-cd ~/Hyperoid-cli-agent && 
-chmod +x install.sh start_hud.sh && 
-./install.sh
+cd Hyperoid-cli-agent 
+chmod +x install.sh start_hud.sh
+bash install.sh
 ```
 ---
 
