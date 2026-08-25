@@ -1,0 +1,11 @@
+{
+  "name": "hyperoid-wa-bridge",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.12",
+    "qrcode-terminal": "^0.12.0",
+    "pino": "^9.0.0"
+  }
+}
+
