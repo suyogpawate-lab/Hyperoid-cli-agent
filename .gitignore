@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.db
+*.log
+config.json
+cache/
+sandbox/
+skills/*.md
+wa_bridge/auth_info/
+wa_bridge/queue/*.json

@@ -1,63 +1,7 @@
-import makeWASocket, { useMultiFileAuthState, DisconnectReason } from '@whiskeysockets/baileys';
-import qrcode from 'qrcode-terminal';
-import pino from 'pino';
-import fs from 'fs';
-import path from 'path';
-
-const AUTH_DIR = path.resolve(process.env.HOME, '.hyperoid_agent/wa_bridge/auth_info');
-const CMD_QUEUE_DIR = path.resolve(process.env.HOME, '.hyperoid_agent/wa_bridge/queue');
-
-if (!fs.existsSync(AUTH_DIR)) fs.mkdirSync(AUTH_DIR, { recursive: true });
-if (!fs.existsSync(CMD_QUEUE_DIR)) fs.mkdirSync(CMD_QUEUE_DIR, { recursive: true });
-
-let sock;
-
-async function startWhatsApp() {
-    const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
-
-    sock = makeWASocket({
-        auth: state,
-        logger: pino({ level: 'silent' }),
-        printQRInTerminal: false
-    });
-
-    sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect, qr } = update;
-
-        if (qr) {
-            console.log('\n\x1b[1;36m+===================================================+\x1b[0m');
-            console.log('\x1b[1;36m|     SCAN THIS QR CODE IN WHATSAPP LINKED DEVICES   |\x1b[0m');
-            console.log('\x1b[1;36m+===================================================+\x1b[0m\n');
-            qrcode.generate(qr, { small: true });
-        }
-
-        if (connection === 'close') {
-            const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut;
-            if (shouldReconnect) {
-                setTimeout(startWhatsApp, 3000);
-            }
-        }
-    });
-
-    sock.ev.on('creds.update', saveCreds);
-}
-
-setInterval(async () => {
-    if (!sock) return;
-    try {
-        const files = fs.readdirSync(CMD_QUEUE_DIR);
-        for (const file of files) {
-            if (file.endsWith('.json')) {
-                const filePath = path.join(CMD_QUEUE_DIR, file);
-                const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-                const cleanPhone = data.phone.replace(/[^0-9]/g, '');
-                const jid = `${cleanPhone}@s.whatsapp.net`;
-                await sock.sendMessage(jid, { text: data.text });
-                fs.unlinkSync(filePath);
-            }
-        }
-    } catch (err) {}
-}, 1000);
-
-startWhatsApp();
-
+// Optional WhatsApp queue worker. Run only after npm install in this directory.
+import makeWASocket,{useMultiFileAuthState,DisconnectReason} from '@whiskeysockets/baileys';
+import qrcode from 'qrcode-terminal'; import pino from 'pino'; import fs from 'fs'; import path from 'path';
+const home=process.env.HOME, auth=path.join(home,'.hyperoid_agent/wa_bridge/auth_info'), queue=path.join(home,'.hyperoid_agent/wa_bridge/queue');
+fs.mkdirSync(auth,{recursive:true}); fs.mkdirSync(queue,{recursive:true}); let sock;
+async function start(){const {state,saveCreds}=await useMultiFileAuthState(auth); sock=makeWASocket({auth:state,logger:pino({level:'silent'}),printQRInTerminal:false}); sock.ev.on('creds.update',saveCreds); sock.ev.on('connection.update',u=>{if(u.qr)qrcode.generate(u.qr,{small:true}); if(u.connection==='close' && u.lastDisconnect?.error?.output?.statusCode!==DisconnectReason.loggedOut)setTimeout(start,3000);});}
+setInterval(async()=>{if(!sock)return; for(const f of fs.readdirSync(queue).filter(x=>x.endsWith('.json'))){const p=path.join(queue,f); try{const d=JSON.parse(fs.readFileSync(p)); const n=String(d.phone).replace(/\D/g,''); await sock.sendMessage(`${n}@s.whatsapp.net`,{text:String(d.text)}); fs.unlinkSync(p);}catch(e){console.error(e);}}},1000); start();
